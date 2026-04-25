@@ -2,80 +2,116 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Condomínio Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Condomínio</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-  body {
-    font-family: 'Segoe UI', sans-serif;
-    background: #f0f2f5;
-    padding: 15px;
-  }
+:root {
+  --primary: #2D6CDF;
+  --bg: #f5f7fb;
+  --card: #ffffff;
+  --text: #333;
+  --success: #2ecc71;
+  --danger: #e74c3c;
+}
 
-  h1 {
-    text-align: center;
-  }
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto;
+  background: var(--bg);
+  color: var(--text);
+}
 
-  .top-bar {
-    text-align: center;
-    margin-bottom: 20px;
-  }
+/* HEADER */
+.header {
+  background: var(--primary);
+  color: white;
+  padding: 15px;
+  border-bottom-left-radius: 20px;
+  border-bottom-right-radius: 20px;
+}
 
-  select {
-    padding: 8px;
-    font-size: 16px;
-  }
+.header h1 {
+  margin: 0;
+  font-size: 20px;
+}
 
-  .dashboard {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 10px;
-  }
+select {
+  margin-top: 10px;
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  border: none;
+}
 
-  .card {
-    background: white;
-    padding: 15px;
-    border-radius: 10px;
-    text-align: center;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-  }
+/* DASHBOARD */
+.dashboard {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 15px;
+}
 
-  .card p {
-    font-size: 20px;
-    font-weight: bold;
-  }
+.card {
+  background: var(--card);
+  padding: 15px;
+  border-radius: 15px;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.05);
+}
 
-  canvas {
-    margin: 20px auto;
-    max-width: 300px;
-  }
+.card h3 {
+  margin: 0;
+  font-size: 14px;
+  color: #777;
+}
 
-  .lista {
-    margin-top: 20px;
-  }
+.card p {
+  font-size: 18px;
+  margin-top: 8px;
+  font-weight: bold;
+}
 
-  .sobrado {
-    display: flex;
-    justify-content: space-between;
-    padding: 10px;
-    margin-bottom: 6px;
-    background: white;
-    border-radius: 8px;
-  }
+/* GRAFICO */
+.chart-container {
+  padding: 15px;
+}
 
-  .pago { color: green; font-weight: bold; }
-  .nao-pago { color: red; font-weight: bold; }
+/* DESPESAS */
+.despesas {
+  margin: 15px;
+}
+
+/* LISTA */
+.lista {
+  padding: 15px;
+}
+
+.sobrado {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px;
+  margin-bottom: 8px;
+  background: var(--card);
+  border-radius: 12px;
+}
+
+.status {
+  font-weight: bold;
+}
+
+.pago { color: var(--success); }
+.nao-pago { color: var(--danger); }
 
 </style>
 </head>
 
 <body>
 
-<h1>📊 Condomínio</h1>
-
-<div class="top-bar">
-  <label>Selecionar mês:</label>
+<div class="header">
+  <h1>🏘️ Condomínio</h1>
   <select id="mesSelect"></select>
 </div>
 
@@ -86,9 +122,11 @@
   <div class="card"><h3>Não pagos</h3><p id="naoPagos"></p></div>
 </div>
 
-<canvas id="grafico"></canvas>
+<div class="chart-container">
+  <canvas id="grafico"></canvas>
+</div>
 
-<div class="card">
+<div class="card despesas">
   <h3>Despesas</h3>
   <p id="despesas"></p>
 </div>
@@ -103,7 +141,6 @@ const sobradosURL = `https://opensheet.elk.sh/${sheetID}/Sobrados`;
 
 let chart;
 
-// carregar meses
 fetch(resumoURL)
 .then(res => res.json())
 .then(resumos => {
@@ -116,14 +153,14 @@ fetch(resumoURL)
     select.appendChild(opt);
   });
 
-  carregarDados(resumos, 0);
+  carregar(resumos, 0);
 
   select.addEventListener("change", e => {
-    carregarDados(resumos, e.target.value);
+    carregar(resumos, e.target.value);
   });
 });
 
-function carregarDados(resumos, index) {
+function carregar(resumos, index) {
   const info = resumos[index];
 
   document.getElementById("arrecadado").textContent = "R$ " + info["Total Arrecadado"];
@@ -142,9 +179,6 @@ function carregarDados(resumos, index) {
 
     data.forEach(item => {
 
-      // se tiver coluna Mes na planilha, descomente:
-      // if (item.Mes !== info.Mes) return;
-
       const isNaoPago = item.Status.toLowerCase().includes("não");
 
       if (isNaoPago) naoPagos++;
@@ -155,7 +189,7 @@ function carregarDados(resumos, index) {
 
       div.innerHTML = `
         <span>Sobrado ${item.Sobrado}</span>
-        <span class="${isNaoPago ? 'nao-pago':'pago'}">${item.Status}</span>
+        <span class="status ${isNaoPago ? 'nao-pago':'pago'}">${item.Status}</span>
       `;
 
       lista.appendChild(div);
@@ -175,13 +209,18 @@ function atualizarGrafico(pagos, naoPagos) {
   if (chart) chart.destroy();
 
   chart = new Chart(ctx, {
-    type: "pie",
+    type: "doughnut",
     data: {
-      labels: ["Pagos", "Não Pagos"],
+      labels: ["Pagos", "Não pagos"],
       datasets: [{
         data: [pagos, naoPagos],
-        backgroundColor: ["green", "red"]
+        backgroundColor: ["#2ecc71", "#e74c3c"]
       }]
+    },
+    options: {
+      plugins: {
+        legend: { position: "bottom" }
+      }
     }
   });
 }
