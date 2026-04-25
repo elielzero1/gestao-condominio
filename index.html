@@ -1,94 +1,190 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestão Condomínio Ilka I</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
-    <style>
-        :root { --primary: #00c4cc; --dark: #2c3e50; --light: #f4f7f6; }
-        body { font-family: 'Segoe UI', sans-serif; margin: 0; background: var(--light); }
-        .header { background: var(--dark); color: white; padding: 20px; text-align: center; }
-        .container { padding: 20px; max-width: 800px; margin: auto; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
-        .card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .card h3 { margin: 0; font-size: 0.8rem; color: #777; }
-        .card p { margin: 10px 0 0; font-size: 1.2rem; font-weight: bold; }
-        table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; }
-        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; font-size: 0.9rem; }
-        th { background: var(--primary); color: white; }
-        .status-pago { color: green; font-weight: bold; }
-        .status-pendente { color: red; font-weight: bold; }
-        .btn-refresh { background: var(--primary); color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer; width: 100%; margin-top: 10px; }
-    </style>
+<meta charset="UTF-8">
+<title>Condomínio Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+  body {
+    font-family: 'Segoe UI', sans-serif;
+    background: #f0f2f5;
+    padding: 15px;
+  }
+
+  h1 {
+    text-align: center;
+  }
+
+  .top-bar {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
+  select {
+    padding: 8px;
+    font-size: 16px;
+  }
+
+  .dashboard {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 10px;
+  }
+
+  .card {
+    background: white;
+    padding: 15px;
+    border-radius: 10px;
+    text-align: center;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  }
+
+  .card p {
+    font-size: 20px;
+    font-weight: bold;
+  }
+
+  canvas {
+    margin: 20px auto;
+    max-width: 300px;
+  }
+
+  .lista {
+    margin-top: 20px;
+  }
+
+  .sobrado {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px;
+    margin-bottom: 6px;
+    background: white;
+    border-radius: 8px;
+  }
+
+  .pago { color: green; font-weight: bold; }
+  .nao-pago { color: red; font-weight: bold; }
+
+</style>
 </head>
+
 <body>
 
-<div class="header">
-    <h2 id="nome-condo">Carregando...</h2>
+<h1>📊 Condomínio</h1>
+
+<div class="top-bar">
+  <label>Selecionar mês:</label>
+  <select id="mesSelect"></select>
 </div>
 
-<div class="container">
-    <div class="grid">
-        <div class="card"><h3>Saldo Atual</h3><p id="saldo-caixa">R$ 0,00</p></div>
-        <div class="card"><h3>Unidades</h3><p>20 Sobrados</p></div>
-    </div>
-
-    <h3>Status dos Moradores</h3>
-    <table id="tabela-moradores">
-        <thead>
-            <tr>
-                <th>Unidade</th>
-                <th>Morador</th>
-                <th>Status</th>
-            </tr>
-        </thead>
-        <tbody>
-            </tbody>
-    </table>
-    
-    <button class="btn-refresh" onclick="buscarDados()">🔄 Atualizar Dados</button>
+<div class="dashboard">
+  <div class="card"><h3>Arrecadado</h3><p id="arrecadado"></p></div>
+  <div class="card"><h3>Caixa</h3><p id="caixa"></p></div>
+  <div class="card"><h3>Pagos</h3><p id="pagos"></p></div>
+  <div class="card"><h3>Não pagos</h3><p id="naoPagos"></p></div>
 </div>
+
+<canvas id="grafico"></canvas>
+
+<div class="card">
+  <h3>Despesas</h3>
+  <p id="despesas"></p>
+</div>
+
+<div class="lista" id="lista"></div>
 
 <script>
-    // COLE O LINK DO SEU CSV DO GOOGLE SHEETS AQUI ABAIXO
-    const urlCSV = https://docs.google.com/spreadsheets/d/e/2PACX-1vTqmkr4jBXZgYuuW6QSw9onCL_vduSo6a9DuZz7DqBqW21-2JdzUxU5pckZiP8qRRCK-JegIj4EpRmf/pub?output=csv;
+const sheetID = "SEU_ID_AQUI";
 
-    function buscarDados() {
-        Papa.parse(urlCSV, {
-            download: true,
-            header: true,
-            complete: function(results) {
-                const dados = results.data;
-                renderizarDados(dados);
-            }
-        });
+const resumoURL = `https://opensheet.elk.sh/${sheetID}/Resumo`;
+const sobradosURL = `https://opensheet.elk.sh/${sheetID}/Sobrados`;
+
+let chart;
+
+// carregar meses
+fetch(resumoURL)
+.then(res => res.json())
+.then(resumos => {
+  const select = document.getElementById("mesSelect");
+
+  resumos.forEach((r, i) => {
+    const opt = document.createElement("option");
+    opt.value = i;
+    opt.textContent = r.Mes;
+    select.appendChild(opt);
+  });
+
+  carregarDados(resumos, 0);
+
+  select.addEventListener("change", e => {
+    carregarDados(resumos, e.target.value);
+  });
+});
+
+function carregarDados(resumos, index) {
+  const info = resumos[index];
+
+  document.getElementById("arrecadado").textContent = "R$ " + info["Total Arrecadado"];
+  document.getElementById("caixa").textContent = "R$ " + info["Total em Caixa"];
+  document.getElementById("despesas").textContent = info.Despesas;
+
+  fetch(sobradosURL)
+  .then(res => res.json())
+  .then(data => {
+
+    const lista = document.getElementById("lista");
+    lista.innerHTML = "";
+
+    let pagos = 0;
+    let naoPagos = 0;
+
+    data.forEach(item => {
+
+      // se tiver coluna Mes na planilha, descomente:
+      // if (item.Mes !== info.Mes) return;
+
+      const isNaoPago = item.Status.toLowerCase().includes("não");
+
+      if (isNaoPago) naoPagos++;
+      else pagos++;
+
+      const div = document.createElement("div");
+      div.className = "sobrado";
+
+      div.innerHTML = `
+        <span>Sobrado ${item.Sobrado}</span>
+        <span class="${isNaoPago ? 'nao-pago':'pago'}">${item.Status}</span>
+      `;
+
+      lista.appendChild(div);
+    });
+
+    document.getElementById("pagos").textContent = pagos;
+    document.getElementById("naoPagos").textContent = naoPagos;
+
+    atualizarGrafico(pagos, naoPagos);
+
+  });
+}
+
+function atualizarGrafico(pagos, naoPagos) {
+  const ctx = document.getElementById("grafico");
+
+  if (chart) chart.destroy();
+
+  chart = new Chart(ctx, {
+    type: "pie",
+    data: {
+      labels: ["Pagos", "Não Pagos"],
+      datasets: [{
+        data: [pagos, naoPagos],
+        backgroundColor: ["green", "red"]
+      }]
     }
-
-    function renderizarDados(dados) {
-        // Supondo que na planilha a linha 0 tenha o nome e a linha 1 tenha o saldo
-        // Ajuste os índices conforme sua planilha
-        document.getElementById('nome-condo').innerText = "Condomínio Ilka I"; 
-        
-        const tbody = document.querySelector('#tabela-moradores tbody');
-        tbody.innerHTML = '';
-
-        dados.forEach(row => {
-            if(row.Unidade) {
-                const classeStatus = row.Status === 'Pago' ? 'status-pago' : 'status-pendente';
-                tbody.innerHTML += `
-                    <tr>
-                        <td>${row.Unidade}</td>
-                        <td>${row.Nome || '---'}</td>
-                        <td class="${classeStatus}">${row.Status || 'Pendente'}</td>
-                    </tr>
-                `;
-            }
-        });
-    }
-
-    // Busca inicial
-    buscarDados();
+  });
+}
 </script>
 
 </body>
