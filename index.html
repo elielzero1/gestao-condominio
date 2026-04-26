@@ -1,0 +1,997 @@
+<!doctype html>
+<html lang="pt-BR" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gerenciador de Condomínio</title>
+  <script src="/_sdk/element_sdk.js"></script>
+  <script src="/_sdk/data_sdk.js"></script>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700;800&amp;family=Outfit:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet">
+  <style>
+  html, body { height: 100%; }
+  body {
+    font-family: 'Outfit', sans-serif;
+    background: var(--bg-color, #f4f1ea);
+    color: var(--text-color, #1f2937);
+  }
+  .font-display { font-family: 'Fraunces', serif; }
+  .house-card {
+    transition: all 0.2s ease;
+  }
+  .house-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 24px -8px rgba(0,0,0,0.15);
+  }
+  .tab-btn.active {
+    background: var(--primary-color, #2d5f4f);
+    color: white;
+  }
+  .status-pill {
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .modal-backdrop {
+    background: rgba(15,23,42,0.55);
+    backdrop-filter: blur(4px);
+  }
+  .toast {
+    animation: slideUp 0.3s ease;
+  }
+  @keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  .spinner {
+    border: 2px solid transparent;
+    border-top: 2px solid currentColor;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .scroll-area::-webkit-scrollbar { width: 6px; }
+  .scroll-area::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 3px; }
+</style>
+  <style>body { box-sizing: border-box; }</style>
+ </head>
+ <body class="h-full w-full">
+  <div class="w-full h-full flex flex-col" style="min-height:100%;"><!-- Header -->
+   <header class="w-full px-6 py-5 border-b" style="background: var(--surface-color,#fff); border-color: rgba(0,0,0,0.06);">
+    <div class="max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-3">
+     <div class="flex items-center gap-3">
+      <div class="w-11 h-11 rounded-xl flex items-center justify-center" style="background: var(--primary-color,#2d5f4f);"><i data-lucide="home" class="text-white" style="width:22px;height:22px;"></i>
+      </div>
+      <div>
+       <h1 id="condoName" class="font-display text-xl sm:text-2xl font-bold leading-tight" style="color: var(--text-color,#1f2937);">Residencial Villa Verde</h1>
+       <p id="condoAddress" class="text-xs sm:text-sm opacity-60">Rua das Flores, 100</p>
+      </div>
+     </div>
+     <div class="flex items-center gap-2 text-xs"><span class="status-pill" style="background: rgba(45,95,79,0.12); color: var(--primary-color,#2d5f4f);">20 SOBRADOS</span> <span id="currentMonth" class="status-pill" style="background: rgba(0,0,0,0.06); color: var(--text-color,#1f2937);"></span>
+     </div>
+    </div>
+   </header><!-- Navigation Tabs -->
+   <nav class="w-full px-6 py-3 border-b" style="background: var(--surface-color,#fff); border-color: rgba(0,0,0,0.06);">
+    <div class="max-w-7xl mx-auto flex gap-2 overflow-x-auto scroll-area"><button data-tab="dashboard" class="tab-btn active flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition" style="background: rgba(0,0,0,0.04);"> <i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i> Painel </button> <button data-tab="units" class="tab-btn flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition" style="background: rgba(0,0,0,0.04);"> <i data-lucide="building-2" style="width:16px;height:16px;"></i> Sobrados </button> <button data-tab="payments" class="tab-btn flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition" style="background: rgba(0,0,0,0.04);"> <i data-lucide="wallet" style="width:16px;height:16px;"></i> Taxas </button> <button data-tab="debts" class="tab-btn flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition" style="background: rgba(0,0,0,0.04);"> <i data-lucide="coins" style="width:16px;height:16px;"></i> Débitos </button> <button data-tab="bookings" class="tab-btn flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition" style="background: rgba(0,0,0,0.04);"> <i data-lucide="calendar-days" style="width:16px;height:16px;"></i> Reservas </button> <button data-tab="issues" class="tab-btn flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition" style="background: rgba(0,0,0,0.04);"> <i data-lucide="alert-triangle" style="width:16px;height:16px;"></i> Ocorrências </button> <button data-tab="announcements" class="tab-btn flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition" style="background: rgba(0,0,0,0.04);"> <i data-lucide="megaphone" style="width:16px;height:16px;"></i> Comunicados </button>
+    </div>
+   </nav><!-- Main content -->
+   <main class="flex-1 overflow-auto scroll-area w-full">
+    <div class="max-w-7xl mx-auto px-6 py-6"><!-- DASHBOARD -->
+     <section id="tab-dashboard" class="tab-content">
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+       <div class="rounded-2xl p-5" style="background: var(--surface-color,#fff); border: 1px solid rgba(0,0,0,0.05);">
+        <div class="flex items-center justify-between mb-2"><span class="text-xs uppercase tracking-wider opacity-60">Arrecadado</span> <i data-lucide="trending-up" style="width:16px;height:16px;color: var(--primary-color,#2d5f4f);"></i>
+        </div>
+        <div id="statCollected" class="font-display text-2xl font-bold">
+         R$ 0
+        </div>
+        <div id="statCollectedPct" class="text-xs opacity-60 mt-1">
+         0% do mês
+        </div>
+       </div>
+       <div class="rounded-2xl p-5" style="background: var(--surface-color,#fff); border: 1px solid rgba(0,0,0,0.05);">
+        <div class="flex items-center justify-between mb-2"><span class="text-xs uppercase tracking-wider opacity-60">Pendente (Mês)</span> <i data-lucide="clock" style="width:16px;height:16px;color:#c2410c;"></i>
+        </div>
+        <div id="statPending" class="font-display text-2xl font-bold">
+         R$ 0
+        </div>
+        <div id="statPendingCount" class="text-xs opacity-60 mt-1">
+         0 unidades
+        </div>
+       </div>
+       <div class="rounded-2xl p-5" style="background: var(--surface-color,#fff); border: 1px solid rgba(0,0,0,0.05);">
+        <div class="flex items-center justify-between mb-2"><span class="text-xs uppercase tracking-wider opacity-60">Débitos</span> <i data-lucide="alert-circle" style="width:16px;height:16px;color:#dc2626;"></i>
+        </div>
+        <div id="statDebts" class="font-display text-2xl font-bold">
+         R$ 0
+        </div>
+        <div id="statDebtsCount" class="text-xs opacity-60 mt-1">
+         0 unidades
+        </div>
+       </div>
+       <div class="rounded-2xl p-5" style="background: var(--surface-color,#fff); border: 1px solid rgba(0,0,0,0.05);">
+        <div class="flex items-center justify-between mb-2"><span class="text-xs uppercase tracking-wider opacity-60">Ocorrências</span> <i data-lucide="alert-circle" style="width:16px;height:16px;color:#b91c1c;"></i>
+        </div>
+        <div id="statIssues" class="font-display text-2xl font-bold">
+         0
+        </div>
+        <div class="text-xs opacity-60 mt-1">
+         abertas
+        </div>
+       </div>
+      </div>
+      <div id="alertsContainer" class="space-y-3 mb-6"></div>
+      <div class="grid lg:grid-cols-2 gap-4">
+       <div class="rounded-2xl p-5" style="background: var(--surface-color,#fff); border: 1px solid rgba(0,0,0,0.05);">
+        <h3 class="font-display text-lg font-bold mb-3 flex items-center gap-2"><i data-lucide="activity" style="width:18px;height:18px;"></i> Situação dos 20 Sobrados</h3>
+        <div id="dashGrid" class="grid grid-cols-5 sm:grid-cols-10 gap-2"></div>
+        <div class="flex items-center gap-4 mt-4 text-xs">
+         <div class="flex items-center gap-1.5">
+          <span class="w-3 h-3 rounded" style="background: var(--primary-color,#2d5f4f);"></span> Pago
+         </div>
+         <div class="flex items-center gap-1.5">
+          <span class="w-3 h-3 rounded" style="background:#f59e0b;"></span> Pendente
+         </div>
+         <div class="flex items-center gap-1.5">
+          <span class="w-3 h-3 rounded" style="background:#dc2626;"></span> Com débito
+         </div>
+         <div class="flex items-center gap-1.5">
+          <span class="w-3 h-3 rounded" style="background:#e5e7eb;"></span> Sem dados
+         </div>
+        </div>
+       </div>
+       <div class="rounded-2xl p-5" style="background: var(--surface-color,#fff); border: 1px solid rgba(0,0,0,0.05);">
+        <h3 class="font-display text-lg font-bold mb-3 flex items-center gap-2"><i data-lucide="bell" style="width:18px;height:18px;"></i> Avisos Recentes</h3>
+        <div id="dashAnnouncements" class="space-y-2"></div>
+       </div>
+      </div>
+     </section><!-- UNITS -->
+     <section id="tab-units" class="tab-content hidden">
+      <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+       <div>
+        <h2 class="font-display text-2xl font-bold">Sobrados</h2>
+        <p class="text-sm opacity-60">Gerencie os moradores dos 20 sobrados</p>
+       </div>
+      </div>
+      <div id="unitsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"></div>
+     </section><!-- PAYMENTS -->
+     <section id="tab-payments" class="tab-content hidden">
+      <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+       <div>
+        <h2 class="font-display text-2xl font-bold">Taxas Condominiais</h2>
+        <p class="text-sm opacity-60">Controle mensal de pagamentos</p>
+       </div>
+       <div class="flex items-center gap-2">
+        <label for="monthFilter" class="text-sm font-medium">Mês:</label> <input id="monthFilter" type="month" class="px-3 py-2 rounded-lg text-sm border" style="border-color: rgba(0,0,0,0.1); background: var(--surface-color,#fff);"> <button id="editMonthSettingsBtn" class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium" style="background: rgba(0,0,0,0.06);"><i data-lucide="settings" style="width:16px;height:16px;"></i> Configurar Mês</button>
+       </div>
+      </div>
+      <div class="rounded-2xl overflow-hidden" style="background: var(--surface-color,#fff); border: 1px solid rgba(0,0,0,0.05);">
+       <table class="w-full text-sm">
+        <thead style="background: rgba(0,0,0,0.03);">
+         <tr>
+          <th class="text-left px-4 py-3 font-medium">Sobrado</th>
+          <th class="text-left px-4 py-3 font-medium">Morador</th>
+          <th class="text-left px-4 py-3 font-medium">Valor</th>
+          <th class="text-left px-4 py-3 font-medium">Status</th>
+          <th class="text-right px-4 py-3 font-medium">Ação</th>
+         </tr>
+        </thead>
+        <tbody id="paymentsTable"></tbody>
+       </table>
+      </div>
+     </section><!-- DEBTS -->
+     <section id="tab-debts" class="tab-content hidden">
+      <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+       <div>
+        <h2 class="font-display text-2xl font-bold">Débitos</h2>
+        <p class="text-sm opacity-60">Registro de débitos acumulados dos sobrados</p>
+       </div><button id="newDebtBtn" class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white" style="background: var(--primary-color,#2d5f4f);"> <i data-lucide="plus" style="width:16px;height:16px;"></i> Registrar Débito </button>
+      </div>
+      <div class="rounded-2xl overflow-hidden" style="background: var(--surface-color,#fff); border: 1px solid rgba(0,0,0,0.05);">
+       <table class="w-full text-sm">
+        <thead style="background: rgba(0,0,0,0.03);">
+         <tr>
+          <th class="text-left px-4 py-3 font-medium">Sobrado</th>
+          <th class="text-left px-4 py-3 font-medium">Morador</th>
+          <th class="text-left px-4 py-3 font-medium">Mês</th>
+          <th class="text-left px-4 py-3 font-medium">Valor Devido</th>
+          <th class="text-right px-4 py-3 font-medium">Ação</th>
+         </tr>
+        </thead>
+        <tbody id="debtsTable"></tbody>
+       </table>
+      </div>
+     </section><!-- BOOKINGS -->
+     <section id="tab-bookings" class="tab-content hidden">
+      <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+       <div>
+        <h2 class="font-display text-2xl font-bold">Reservas de Áreas Comuns</h2>
+        <p class="text-sm opacity-60">Salão de festas, churrasqueira, quadra e piscina</p>
+       </div><button id="newBookingBtn" class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white" style="background: var(--primary-color,#2d5f4f);"> <i data-lucide="plus" style="width:16px;height:16px;"></i> Nova Reserva </button>
+      </div>
+      <div id="bookingsList" class="space-y-3"></div>
+     </section><!-- ISSUES -->
+     <section id="tab-issues" class="tab-content hidden">
+      <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+       <div>
+        <h2 class="font-display text-2xl font-bold">Ocorrências</h2>
+        <p class="text-sm opacity-60">Manutenções e problemas reportados</p>
+       </div><button id="newIssueBtn" class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white" style="background: var(--primary-color,#2d5f4f);"> <i data-lucide="plus" style="width:16px;height:16px;"></i> Nova Ocorrência </button>
+      </div>
+      <div id="issuesList" class="space-y-3"></div>
+     </section><!-- ANNOUNCEMENTS -->
+     <section id="tab-announcements" class="tab-content hidden">
+      <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+       <div>
+        <h2 class="font-display text-2xl font-bold">Comunicados</h2>
+        <p class="text-sm opacity-60">Avisos gerais para o condomínio</p>
+       </div><button id="newAnnouncementBtn" class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white" style="background: var(--primary-color,#2d5f4f);"> <i data-lucide="plus" style="width:16px;height:16px;"></i> Novo Comunicado </button>
+      </div>
+      <div id="announcementsList" class="space-y-3"></div>
+     </section>
+    </div>
+   </main>
+  </div><!-- Modal container -->
+  <div id="modalRoot"></div>
+  <div id="toastRoot" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
+  <script>
+// ============== Constants ==============
+const TOTAL_UNITS = 20;
+const COMMON_AREAS = ['Salão de Festas','Churrasqueira','Quadra','Piscina'];
+
+// Static reference for the 20 units (IDs only; user data merges at runtime)
+const UNIT_REFS = Array.from({length: TOTAL_UNITS}, (_,i) => ({
+  unitId: `S${String(i+1).padStart(2,'0')}`
+}));
+
+// Month-specific settings (tax amounts and surcharges)
+function getMonthSettings(month){
+  const settings = byType('month_setting').find(s => s.month === month);
+  return settings || { type: 'month_setting', month, tax_amount: '', surcharge_amount: '' };
+}
+
+// ============== State ==============
+let config = {};
+let defaultConfig = {
+  condo_name: "Residencial Villa Verde",
+  condo_address: "Rua das Flores, 100",
+  monthly_fee_label: "450",
+  primary_color: "#2d5f4f",
+  surface_color: "#ffffff",
+  bg_color: "#f4f1ea",
+  text_color: "#1f2937",
+  accent_color: "#b9542b"
+};
+
+let allRecords = [];
+let currentTab = 'dashboard';
+let selectedMonth = new Date().toISOString().slice(0,7);
+
+// ============== Helpers ==============
+const $ = (id) => document.getElementById(id);
+const fmtMoney = (v) => 'R$ ' + Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtDate = (iso) => { if(!iso) return '-'; const d=new Date(iso); return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); };
+const fmtDateOnly = (iso) => { if(!iso) return '-'; return new Date(iso).toLocaleDateString('pt-BR'); };
+const monthLabel = (m) => { const [y,mo]=m.split('-'); return new Date(y, mo-1, 1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'}); };
+
+function getFee(){ return Number(config.monthly_fee_label || defaultConfig.monthly_fee_label) || 450; }
+function byType(t){ return allRecords.filter(r=>r.type===t); }
+function getResident(unitId){ return byType('resident').find(r=>r.unitId===unitId); }
+function getPayment(unitId, month){ return byType('payment').find(r=>r.unitId===unitId && r.month===month); }
+function getDebt(unitId){ return byType('debt').filter(r=>r.unitId===unitId); }
+
+function toast(msg, kind='ok'){
+  const el = document.createElement('div');
+  el.className = 'toast px-4 py-3 rounded-xl shadow-lg text-sm font-medium text-white';
+  el.style.background = kind==='err' ? '#b91c1c' : 'var(--primary-color,#2d5f4f)';
+  el.textContent = msg;
+  $('toastRoot').appendChild(el);
+  setTimeout(()=>el.remove(), 2800);
+}
+
+// ============== Modal ==============
+function showModal(title, bodyHTML, onMount){
+  const root = $('modalRoot');
+  root.innerHTML = `
+    <div class="fixed inset-0 z-40 modal-backdrop flex items-center justify-center p-4">
+      <div class="w-full max-w-md rounded-2xl overflow-hidden" style="background: var(--surface-color,#fff);">
+        <div class="px-5 py-4 border-b flex items-center justify-between" style="border-color: rgba(0,0,0,0.08);">
+          <h3 class="font-display text-lg font-bold">${title}</h3>
+          <button id="modalClose" class="p-1 rounded hover:bg-black/5"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
+        </div>
+        <div class="p-5 max-h-[70vh] overflow-auto scroll-area">${bodyHTML}</div>
+      </div>
+    </div>`;
+  lucide.createIcons();
+  $('modalClose').onclick = closeModal;
+  if(onMount) onMount();
+}
+function closeModal(){ $('modalRoot').innerHTML=''; }
+
+// ============== Tabs ==============
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>{
+      b.classList.remove('active');
+      b.style.background = 'rgba(0,0,0,0.04)';
+      b.style.color = '';
+    });
+    btn.classList.add('active');
+    btn.style.background = 'var(--primary-color,#2d5f4f)';
+    btn.style.color = '#fff';
+    currentTab = btn.dataset.tab;
+    document.querySelectorAll('.tab-content').forEach(s=>s.classList.add('hidden'));
+    $('tab-' + currentTab).classList.remove('hidden');
+    renderAll();
+  });
+});
+
+// ============== Renderers ==============
+function renderAll(){
+  renderDashboard();
+  renderUnits();
+  renderPayments();
+  renderDebts();
+  renderBookings();
+  renderIssues();
+  renderAnnouncements();
+  lucide.createIcons();
+}
+
+function renderDashboard(){
+  const payments = byType('payment').filter(p=>p.month===selectedMonth);
+  const paid = payments.filter(p=>p.paid);
+  const pendingCount = TOTAL_UNITS - paid.length;
+  const collected = paid.reduce((s,p)=>s+Number(p.amount||0),0);
+  const pending = pendingCount * getFee();
+  
+  const debts = byType('debt');
+  const totalDebts = debts.reduce((s,d)=>s+Number(d.debt_amount||0),0);
+  const debtsCount = new Set(debts.map(d=>d.unitId)).size;
+
+  $('statCollected').textContent = fmtMoney(collected);
+  $('statCollectedPct').textContent = `${Math.round((paid.length/TOTAL_UNITS)*100)}% das unidades`;
+  $('statPending').textContent = fmtMoney(pending);
+  $('statPendingCount').textContent = `${pendingCount} unidades`;
+  $('statDebts').textContent = fmtMoney(totalDebts);
+  $('statDebtsCount').textContent = `${debtsCount} unidades`;
+  $('currentMonth').textContent = monthLabel(selectedMonth).toUpperCase();
+
+  const grid = $('dashGrid');
+  grid.innerHTML = UNIT_REFS.map(u=>{
+    const pay = getPayment(u.unitId, selectedMonth);
+    const hasDebt = debts.some(d=>d.unitId===u.unitId);
+    let color = '#e5e7eb';
+    if(hasDebt) color = '#dc2626';
+    else if(pay) color = pay.paid ? 'var(--primary-color,#2d5f4f)' : '#f59e0b';
+    return `<div class="aspect-square rounded-lg flex items-center justify-center text-[10px] font-bold text-white" style="background:${color};" title="${u.unitId}">${u.unitId}</div>`;
+  }).join('');
+
+  const anns = byType('announcement').sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt)).slice(0,4);
+  $('dashAnnouncements').innerHTML = anns.length ? anns.map(a=>`
+    <div class="p-3 rounded-lg" style="background: rgba(0,0,0,0.03);">
+      <div class="flex items-start justify-between gap-2">
+        <div class="font-semibold text-sm">${escapeHtml(a.title||'')}</div>
+        <div class="text-xs opacity-50 whitespace-nowrap">${fmtDateOnly(a.createdAt)}</div>
+      </div>
+      <div class="text-xs opacity-70 mt-1 line-clamp-2">${escapeHtml(a.description||'')}</div>
+    </div>
+  `).join('') : `<div class="text-sm opacity-50 py-4 text-center">Nenhum comunicado ainda</div>`;
+
+  // Render alerts
+  const alertsContainer = $('alertsContainer');
+  alertsContainer.innerHTML = '';
+  
+  // Alert for debts
+  if(debtsCount > 0){
+    const alert = document.createElement('div');
+    alert.className = 'rounded-2xl p-4 flex items-center gap-3';
+    alert.style.background = 'rgba(220, 38, 38, 0.08)';
+    alert.style.borderLeft = '4px solid #dc2626';
+    alert.innerHTML = `
+      <i data-lucide="alert-circle" style="width: 20px; height: 20px; color: #dc2626; flex-shrink: 0;"></i>
+      <div class="flex-1 min-w-0">
+        <div class="font-semibold text-sm" style="color: #dc2626;">Débitos Registrados</div>
+        <div class="text-xs opacity-75">${debtsCount} unidade(s) com débito(s) pendente(s)</div>
+      </div>
+    `;
+    alertsContainer.appendChild(alert);
+  }
+
+  // Alert for pending payments
+  if(pendingCount > 0){
+    const alert = document.createElement('div');
+    alert.className = 'rounded-2xl p-4 flex items-center gap-3';
+    alert.style.background = 'rgba(194, 65, 12, 0.08)';
+    alert.style.borderLeft = '4px solid #c2410c';
+    alert.innerHTML = `
+      <i data-lucide="clock" style="width: 20px; height: 20px; color: #c2410c; flex-shrink: 0;"></i>
+      <div class="flex-1 min-w-0">
+        <div class="font-semibold text-sm" style="color: #c2410c;">Pendência do Mês</div>
+        <div class="text-xs opacity-75">${pendingCount} unidade(s) com taxa a pagar</div>
+      </div>
+    `;
+    alertsContainer.appendChild(alert);
+  }
+
+  // Alert for announcements
+  if(anns.length > 0){
+    const alert = document.createElement('div');
+    alert.className = 'rounded-2xl p-4 flex items-center gap-3';
+    alert.style.background = 'rgba(45, 95, 79, 0.08)';
+    alert.style.borderLeft = '4px solid var(--primary-color, #2d5f4f)';
+    alert.innerHTML = `
+      <i data-lucide="megaphone" style="width: 20px; height: 20px; color: var(--primary-color, #2d5f4f); flex-shrink: 0;"></i>
+      <div class="flex-1 min-w-0">
+        <div class="font-semibold text-sm" style="color: var(--primary-color, #2d5f4f);">Novo(s) Comunicado(s)</div>
+        <div class="text-xs opacity-75">${anns.length} comunicado(s) recente(s)</div>
+      </div>
+    `;
+    alertsContainer.appendChild(alert);
+  }
+
+  lucide.createIcons();
+}
+
+function renderUnits(){
+  const grid = $('unitsGrid');
+  grid.innerHTML = UNIT_REFS.map(u=>{
+    const r = getResident(u.unitId);
+    const pay = getPayment(u.unitId, selectedMonth);
+    const hasDebt = byType('debt').some(d=>d.unitId===u.unitId);
+    let statusColor = '#9ca3af';
+    let statusText = 'Sem registro';
+    if(hasDebt){
+      statusColor = '#dc2626';
+      statusText = 'Com débito';
+    } else if(pay){
+      statusColor = pay.paid ? 'var(--primary-color,#2d5f4f)' : '#f59e0b';
+      statusText = pay.paid ? 'Em dia' : 'Pendente';
+    }
+    return `
+    <div class="house-card rounded-2xl p-4 cursor-pointer" style="background: var(--surface-color,#fff); border: 1px solid rgba(0,0,0,0.05);" data-unit="${u.unitId}">
+      <div class="flex items-start justify-between mb-3">
+        <div class="w-10 h-10 rounded-lg flex items-center justify-center font-display font-bold" style="background: rgba(45,95,79,0.12); color: var(--primary-color,#2d5f4f);">${u.unitId}</div>
+        <span class="status-pill" style="background: ${statusColor}22; color: ${statusColor};">${statusText}</span>
+      </div>
+      <div class="font-semibold text-sm mb-0.5">${r?escapeHtml(r.ownerName):'<span class="opacity-50 italic">Sem morador cadastrado</span>'}</div>
+      <div class="text-xs opacity-60">${r?`${r.residents||1} morador(es)`:'Clique para cadastrar'}</div>
+      ${r?`<div class="text-xs opacity-60 mt-1">${escapeHtml(r.phone||'')}</div>`:''}
+    </div>`;
+  }).join('');
+  grid.querySelectorAll('[data-unit]').forEach(el=>{
+    el.addEventListener('click', ()=>openUnitModal(el.dataset.unit));
+  });
+}
+
+function openUnitModal(unitId){
+  const r = getResident(unitId);
+  const body = `
+    <form id="unitForm" class="space-y-3">
+      <div>
+        <label for="f-owner" class="block text-xs font-medium mb-1 opacity-70">Nome do Morador</label>
+        <input id="f-owner" required class="w-full px-3 py-2 rounded-lg border text-sm" style="border-color: rgba(0,0,0,0.15);" value="${r?escapeHtml(r.ownerName):''}">
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label for="f-residents" class="block text-xs font-medium mb-1 opacity-70">Nº Moradores</label>
+          <input id="f-residents" type="number" min="1" class="w-full px-3 py-2 rounded-lg border text-sm" style="border-color: rgba(0,0,0,0.15);" value="${r?r.residents||1:1}">
+        </div>
+        <div>
+          <label for="f-phone" class="block text-xs font-medium mb-1 opacity-70">Telefone</label>
+          <input id="f-phone" class="w-full px-3 py-2 rounded-lg border text-sm" style="border-color: rgba(0,0,0,0.15);" value="${r?escapeHtml(r.phone||''):''}">
+        </div>
+      </div>
+      <div>
+        <label for="f-email" class="block text-xs font-medium mb-1 opacity-70">E-mail</label>
+        <input id="f-email" type="email" class="w-full px-3 py-2 rounded-lg border text-sm" style="border-color: rgba(0,0,0,0.15);" value="${r?escapeHtml(r.email||''):''}">
+      </div>
+      <div class="flex gap-2 pt-2">
+        ${r?`<button type="button" id="delUnit" class="px-3 py-2 rounded-lg text-sm font-medium" style="background: rgba(185,28,28,0.1); color:#b91c1c;"><i data-lucide="trash-2" style="width:14px;height:14px;display:inline;"></i> Remover</button>`:''}
+        <button type="submit" id="saveUnit" class="flex-1 px-4 py-2 rounded-lg text-sm font-semibold text-white flex items-center justify-center gap-2" style="background: var(--primary-color,#2d5f4f);">
+          <span>Salvar</span>
+        </button>
+      </div>
+    </form>`;
+  showModal(`Sobrado ${unitId}`, body, ()=>{
+    $('unitForm').onsubmit = async (e)=>{
+      e.preventDefault();
+      const btn = $('saveUnit');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner w-4 h-4"></span> Salvando...';
+      const data = {
+        type:'resident',
+        unitId,
+        ownerName: $('f-owner').value.trim(),
+        residents: Number($('f-residents').value)||1,
+        phone: $('f-phone').value.trim(),
+        email: $('f-email').value.trim()
+      };
+      let result;
+      if(r){
+        result = await window.dataSdk.update({...r, ...data});
+      } else {
+        if(allRecords.length >= 999){ toast('Limite de registros atingido',' err'); btn.disabled=false; return; }
+        result = await window.dataSdk.create(data);
+      }
+      if(result.isOk){ toast('Morador salvo!'); closeModal(); }
+      else { toast('Erro ao salvar','err'); btn.disabled=false; btn.textContent='Salvar'; }
+    };
+    if(r){
+      $('delUnit').onclick = async ()=>{
+        const btn = $('delUnit');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner w-3 h-3 inline-block"></span>';
+        const res = await window.dataSdk.delete(r);
+        if(res.isOk){ toast('Morador removido'); closeModal(); }
+        else { toast('Erro','err'); btn.disabled=false; }
+      };
+    }
+  });
+}
+
+function renderPayments(){
+  const tbody = $('paymentsTable');
+  $('monthFilter').value = selectedMonth;
+  const monthSettings = getMonthSettings(selectedMonth);
+  const fee = Number(monthSettings.tax_amount || config.monthly_fee_label || defaultConfig.monthly_fee_label) || 450;
+  const surcharge = Number(monthSettings.surcharge_amount || 0) || 0;
+  const totalPerUnit = fee + surcharge;
+
+  tbody.innerHTML = UNIT_REFS.map(u=>{
+    const r = getResident(u.unitId);
+    const p = getPayment(u.unitId, selectedMonth);
+    const paid = p && p.paid;
+    return `
+      <tr class="border-t" style="border-color: rgba(0,0,0,0.05);">
+        <td class="px-4 py-3 font-semibold">${u.unitId}</td>
+        <td class="px-4 py-3">${r?escapeHtml(r.ownerName):'<span class="opacity-40 italic">sem morador</span>'}</td>
+        <td class="px-4 py-3">
+          <div>${fmtMoney(p?p.amount:totalPerUnit)}</div>
+          ${surcharge > 0 ? `<div class="text-xs opacity-60">(R$ ${fee.toLocaleString('pt-BR')} + Rateio R$ ${surcharge.toLocaleString('pt-BR')})</div>` : ''}
+        </td>
+        <td class="px-4 py-3">
+          <span class="status-pill" style="background:${paid?'rgba(45,95,79,0.15)':'rgba(245,158,11,0.15)'}; color:${paid?'var(--primary-color,#2d5f4f)':'#c2410c'};">
+            ${paid?'Pago':'Pendente'}
+          </span>
+          ${paid?`<div class="text-xs opacity-50 mt-1">${fmtDateOnly(p.paidAt)}</div>`:''}
+        </td>
+        <td class="px-4 py-3 text-right">
+          <button data-pay="${u.unitId}" class="px-3 py-1.5 rounded-lg text-xs font-semibold ${paid?'':'text-white'}" style="${paid?'background: rgba(0,0,0,0.06);':'background: var(--primary-color,#2d5f4f);'}">
+            ${paid?'Desfazer':'Marcar Pago'}
+          </button>
+        </td>
+      </tr>`;
+  }).join('');
+  tbody.querySelectorAll('[data-pay]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const unitId = btn.dataset.pay;
+      const existing = getPayment(unitId, selectedMonth);
+      btn.disabled = true;
+      const orig = btn.innerHTML;
+      btn.innerHTML = '<span class="spinner w-3 h-3 inline-block"></span>';
+      let res;
+      if(existing){
+        res = await window.dataSdk.update({...existing, paid: !existing.paid, paidAt: !existing.paid ? new Date().toISOString() : ''});
+      } else {
+        if(allRecords.length >= 999){ toast('Limite atingido','err'); btn.disabled=false; btn.innerHTML=orig; return; }
+        res = await window.dataSdk.create({type:'payment',unitId,month:selectedMonth,amount:totalPerUnit,paid:true,paidAt:new Date().toISOString()});
+      }
+      if(res.isOk) toast('Atualizado!');
+      else { toast('Erro','err'); btn.disabled=false; btn.innerHTML=orig; }
+    });
+  });
+}
+
+$('monthFilter').addEventListener('change', (e)=>{ selectedMonth = e.target.value; renderAll(); });
+
+$('editMonthSettingsBtn').addEventListener('click', ()=>{
+  const settings = getMonthSettings(selectedMonth);
+  showModal(`Configurar ${monthLabel(selectedMonth)}`, `
+    <form id="monthSettingsForm" class="space-y-3">
+      <div>
+        <label for="ms-tax" class="block text-xs font-medium mb-1 opacity-70">Taxa Mensal (R$)</label>
+        <input id="ms-tax" type="number" min="0" step="0.01" class="w-full px-3 py-2 rounded-lg border text-sm" style="border-color: rgba(0,0,0,0.15);" value="${settings.tax_amount || config.monthly_fee_label || defaultConfig.monthly_fee_label || 450}" placeholder="450.00">
+      </div>
+      <div>
+        <label for="ms-surcharge" class="block text-xs font-medium mb-1 opacity-70">Rateio/Contribuição Extra (R$)</label>
+        <input id="ms-surcharge" type="number" min="0" step="0.01" class="w-full px-3 py-2 rounded-lg border text-sm" style="border-color: rgba(0,0,0,0.15);" value="${settings.surcharge_amount || 0}" placeholder="0.00">
+      </div>
+      <div class="p-3 rounded-lg" style="background: rgba(0,0,0,0.04);">
+        <div class="text-xs opacity-70 mb-2">Valor por unidade neste mês:</div>
+        <div id="totalPreview" class="text-lg font-semibold">R$ 0,00</div>
+      </div>
+      <button type="submit" id="saveMSBtn" class="w-full px-4 py-2 rounded-lg text-sm font-semibold text-white" style="background: var(--primary-color,#2d5f4f);">Salvar Configurações</button>
+    </form>`, ()=>{
+    const updatePreview = ()=>{
+      const tax = Number($('ms-tax').value) || 0;
+      const surcharge = Number($('ms-surcharge').value) || 0;
+      $('totalPreview').textContent = fmtMoney(tax + surcharge);
+    };
+    $('ms-tax').addEventListener('input', updatePreview);
+    $('ms-surcharge').addEventListener('input', updatePreview);
+    updatePreview();
+
+    $('monthSettingsForm').onsubmit = async (e)=>{
+      e.preventDefault();
+      const btn = $('saveMSBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner w-4 h-4 inline-block"></span> Salvando...';
+      
+      const tax = Number($('ms-tax').value) || 450;
+      const surcharge = Number($('ms-surcharge').value) || 0;
+      
+      let result;
+      if(settings.__backendId){
+        result = await window.dataSdk.update({...settings, tax_amount: tax, surcharge_amount: surcharge});
+      } else {
+        if(allRecords.length >= 999){ toast('Limite atingido','err'); btn.disabled=false; return; }
+        result = await window.dataSdk.create({type:'month_setting', month: selectedMonth, tax_amount: tax, surcharge_amount: surcharge});
+      }
+      
+      if(result.isOk){ toast('Configurações salvas!'); closeModal(); }
+      else { toast('Erro ao salvar','err'); btn.disabled=false; btn.textContent='Salvar Configurações'; }
+    };
+  });
+});
+
+function renderDebts(){
+  const tbody = $('debtsTable');
+  const debts = byType('debt').sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
+  
+  tbody.innerHTML = debts.length ? debts.map(d=>{
+    const r = getResident(d.unitId);
+    return `
+      <tr class="border-t" style="border-color: rgba(0,0,0,0.05);">
+        <td class="px-4 py-3 font-semibold">${d.unitId}</td>
+        <td class="px-4 py-3">${r?escapeHtml(r.ownerName):'<span class="opacity-40">sem morador</span>'}</td>
+        <td class="px-4 py-3 text-sm">${d.debt_month || 'N/A'}</td>
+        <td class="px-4 py-3 font-semibold text-red-600">${fmtMoney(d.debt_amount)}</td>
+        <td class="px-4 py-3 text-right">
+          <button data-del-debt="${d.__backendId}" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white" style="background: rgba(220,38,38,0.8);">
+            Remover
+          </button>
+        </td>
+      </tr>`;
+  }).join('') : `<tr><td colspan="5" class="px-4 py-6 text-center text-sm opacity-50">Sem débitos registrados</td></tr>`;
+
+  tbody.querySelectorAll('[data-del-debt]').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const rec = allRecords.find(r=>r.__backendId===btn.dataset.delDebt);
+      if(!rec) return;
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner w-3 h-3 inline-block"></span>';
+      const res = await window.dataSdk.delete(rec);
+      if(res.isOk) toast('Débito removido');
+      else { toast('Erro','err'); btn.disabled=false; }
+    };
+  });
+}
+
+$('newDebtBtn').addEventListener('click', ()=>{
+  showModal('Registrar Débito', `
+    <form id="debtForm" class="space-y-3">
+      <div>
+        <label for="d-unit" class="block text-xs font-medium mb-1 opacity-70">Sobrado</label>
+        <select id="d-unit" required class="w-full px-3 py-2 rounded-lg border text-sm" style="border-color: rgba(0,0,0,0.15);">
+          <option value="">Selecione um sobrado</option>
+          ${UNIT_REFS.map(u=>`<option value="${u.unitId}">${u.unitId} ${getResident(u.unitId)?' - '+escapeHtml(getResident(u.unitId).ownerName):''}</option>`).join('')}
+        </select>
+      </div>
+      <div>
+        <label for="d-month" class="block text-xs font-medium mb-1 opacity-70">Mês do Débito</label>
+        <input id="d-month" type="month" required class="w-full px-3 py-2 rounded-lg border text-sm" style="border-color: rgba(0,0,0,0.15);">
+      </div>
+      <div>
+        <label for="d-amount" class="block text-xs font-medium mb-1 opacity-70">Valor Devido (R$)</label>
+        <input id="d-amount" type="number" min="0.01" step="0.01" required class="w-full px-3 py-2 rounded-lg border text-sm" style="border-color: rgba(0,0,0,0.15);" placeholder="0.00">
+      </div>
+      <button type="submit" id="saveD" class="w-full px-4 py-2 rounded-lg text-sm font-semibold text-white" style="background: var(--primary-color,#2d5f4f);">Registrar Débito</button>
+    </form>`, ()=>{
+    $('debtForm').onsubmit = async (e)=>{
+      e.preventDefault();
+      const btn = $('saveD');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner w-4 h-4 inline-block"></span>';
+      if(allRecords.length >= 999){ toast('Limite atingido','err'); btn.disabled=false; return; }
+      const res = await window.dataSdk.create({
+        type:'debt',
+        unitId: $('d-unit').value,
+        debt_month: $('d-month').value,
+        debt_amount: Number($('d-amount').value),
+        createdAt: new Date().toISOString()
+      });
+      if(res.isOk){ toast('Débito registrado!'); closeModal(); }
+      else { toast('Erro','err'); btn.disabled=false; btn.textContent='Registrar Débito'; }
+    };
+  });
+});
+
+function renderBookings(){
+  const list = byType('booking').sort((a,b)=>new Date(b.date)-new Date(a.date));
+  $('bookingsList').innerHTML = list.length ? list.map(b=>{
+    const upcoming = new Date(b.date) >= new Date(new Date().toDateString());
+    return `
+    <div class="rounded-2xl p-4 flex items-center justify-between gap-3 flex-wrap" style="background: var(--surface-color,#fff); border: 1px solid rgba(0,0,0,0.05);">
+      <div class="flex items-center gap-3">
+        <div class="w-11 h-11 rounded-xl flex items-center justify-center" style="background: rgba(185,84,43,0.12);">
+          <i data-lucide="${iconArea(b.area)}" style="width:20px;height:20px;color: var(--accent-color,#b9542b);"></i>
+        </div>
+        <div>
+          <div class="font-semibold">${escapeHtml(b.area)}</div>
+          <div class="text-xs opacity-60">Sobrado ${b.unitId} · ${fmtDateOnly(b.date)}</div>
+          ${b.notes?`<div class="text-xs opacity-70 mt-1">${escapeHtml(b.notes)}</div>`:''}
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="status-pill" style="background:${upcoming?'rgba(45,95,79,0.15)':'rgba(0,0,0,0.06)'}; color:${upcoming?'var(--primary-color,#2d5f4f)':'#6b7280'};">${upcoming?'Futura':'Concluída'}</span>
+        <button data-del-booking="${b.__backendId}" class="p-2 rounded-lg hover:bg-black/5"><i data-lucide="trash-2" style="width:16px;height:16px;color:#b91c1c;"></i></button>
+      </div>
+    </div>`;
+  }).join('') : emptyState('calendar-x','Nenhuma reserva ainda','Clique em "Nova Reserva" para começar');
+  $('bookingsList').querySelectorAll('[data-del-booking]').forEach(b=>{
+    b.onclick = async ()=>{
+      const rec = allRecords.find(r=>r.__backendId===b.dataset.delBooking);
+      if(!rec) return; b.disabled=true;
+      const res = await window.dataSdk.delete(rec);
+      if(res.isOk) toast('Reserva excluída'); else toast('Erro','err');
+    };
+  });
+}
+
+function iconArea(a){
+  return {'Salão de Festas':'party-popper','Churrasqueira':'flame','Quadra':'dribbble','Piscina':'waves'}[a] || 'calendar';
+}
+
+$('newBookingBtn').addEventListener('click', ()=>{
+  showModal('Nova Reserva', `
+    <form id="bookingForm" class="space-y-3">
+      <div>
+        <label for="b-unit" class="block text-xs font-medium mb-1 opacity-70">Sobrado</label>
+        <select id="b-unit" class="w-full px-3 py-2 rounded-lg border text-sm" style="border-color: rgba(0,0,0,0.15);">
+          ${UNIT_REFS.map(u=>`<option value="${u.unitId}">${u.unitId} ${getResident(u.unitId)?' - '+escapeHtml(getResident(u.unitId).ownerName):''}</option>`).join('')}
+        </select>
+      </div>
+      <div>
+        <label for="b-area" class="block text-xs font-medium mb-1 opacity-70">Área</label>
+        <select id="b-area" class="w-full px-3 py-2 rounded-lg border text-sm" style="border-color: rgba(0,0,0,0.15);">
+          ${COMMON_AREAS.map(a=>`<option>${a}</option>`).join('')}
+        </select>
+      </div>
+      <div>
+        <label for="b-date" class="block text-xs font-medium mb-1 opacity-70">Data</label>
+        <input id="b-date" type="date" required class="w-full px-3 py-2 rounded-lg border text-sm" style="border-color: rgba(0,0,0,0.15);">
+      </div>
+      <div>
+        <label for="b-notes" class="block text-xs font-medium mb-1 opacity-70">Observações</label>
+        <textarea id="b-notes" rows="2" class="w-full px-3 py-2 rounded-lg border text-sm" style="border-color: rgba(0,0,0,0.15);"></textarea>
+      </div>
+      <button type="submit" id="saveB" class="w-full px-4 py-2 rounded-lg text-sm font-semibold text-white" style="background: var(--primary-color,#2d5f4f);">Reservar</button>
+    </form>`, ()=>{
+    $('bookingForm').onsubmit = async (e)=>{
+      e.preventDefault();
+      const btn = $('saveB');
+      btn.disabled=true; btn.innerHTML='<span class="spinner w-4 h-4 inline-block"></span>';
+      if(allRecords.length>=999){ toast('Limite atingido','err'); return; }
+      const date = new Date($('b-date').value).toISOString();
+      const conflict = byType('booking').find(x=>x.area===$('b-area').value && x.date.slice(0,10)===date.slice(0,10));
+      if(conflict){ toast('Área já reservada nesta data','err'); btn.disabled=false; btn.textContent='Reservar'; return; }
+      const res = await window.dataSdk.create({
+        type:'booking', unitId:$('b-unit').value, area:$('b-area').value,
+        date, notes:$('b-notes').value.trim()
+      });
+      if(res.isOk){ toast('Reserva criada!'); closeModal(); } else { toast('Erro','err'); btn.disabled=false; }
+    };
+  });
+});
+
+function renderIssues(){
+  const list = byType('issue').sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+  $('issuesList').innerHTML = list.length ? list.map(i=>{
+    const priColor = {high:'#b91c1c', medium:'#c2410c', low:'#6b7280'}[i.priority||'low'];
+    const statusColor = i.status==='resolved' ? 'var(--primary-color,#2d5f4f)' : (i.status==='progress' ? '#c2410c' : '#6b7280');
+    const statusText = {open:'Aberta',progress:'Em andamento',resolved:'Resolvida'}[i.status||'open'];
+    return `
+    <div class="rounded-2xl p-4" style="background: var(--surface-color,#fff); border: 1px solid rgba(0,0,0,0.05);">
+      <div class="flex items-start justify-between gap-3 flex-wrap">
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 mb-1 flex-wrap">
+            <span class="status-pill" style="background:${priColor}22; color:${priColor};">${({high:'Alta',medium:'Média',low:'Baixa'})[i.priority||'low']}</span>
+            <span class="status-pill" style="background:${statusColor}22; color:${statusColor};">${statusText}</span>
+            <span class="text-xs opacity-50">Sobrado ${i.unitId}</span>
+          </div>
+          <div class="font-semibold">${escapeHtml(i.title||'')}</div>
+          <div class="text-sm opacity-70 mt-1">${escapeHtml(i.description||'')}</div>
+          <div class="text-xs opacity-50 mt-2">${fmtDate(i.createdAt)}</div>
+        </div>
+        <div class="flex items-center gap-1">
+          <select data-issue-status="${i.__backendId}" class="text-xs px-2 py-1.5 rounded-lg border" style="border-color: rgba(0,0,0,0.12);">
+            <option value="open" ${i.status==='open'?'selected':''}>Aberta</option>
+            <option value="progress" ${i.status==='progress'?'selected':''}>Em andamento</option>
+            <option value="resolved" ${i.status==='resolved'?'selected':''}>Resolvida</option>
+          </select>
+          <button data-del-issue="${i.__backendId}" class="p-2 rounded-lg hover:bg-black/5"><i data-lucide="trash-2" style="width:16px;height:16px;color:#b91c1c;"></i></button>
+        </div>
+      </div>
+    </div>`;
+  }).join('') : emptyState('check-circle','Nenhuma ocorrência','Sem problemas reportados no momento');
+  $('issuesList').querySelectorAll('[data-issue-status]').forEach(sel=>{
+    sel.onchange = async ()=>{
+      const rec = allRecords.find(r=>r.__backendId===sel.dataset.issueStatus);
+      if(!rec) return;
+      const res = await window.dataSdk.update({...rec, status: sel.value});
+      if(res.isOk) toast('Atualizado'); else toast('Erro','err');
+    };
+  });
+  $('issuesList').querySelectorAll('[data-del-issue]').forEach(b=>{
+    b.onclick = async ()=>{
+      const rec = allRecords.find(r=>r.__backendId===b.dataset.delIssue);
+      if(!rec) return; b.disabled=true;
+      const res = await window.dataSdk.delete(rec);
+      if(res.isOk) toast('Excluída'); else toast('Erro','err');
+    };
+  });
+}
+
+$('newIssueBtn').addEventListener('click', ()=>{
+  showModal('Nova Ocorrência', `
+    <form id="issueForm" class="space-y-3">
+      <div>
+        <label for="i-unit" class="block text-xs font-medium mb-1 opacity-70">Sobrado</label>
+        <select id="i-unit" class="w-full px-3 py-2 rounded-lg border text-sm" style="border-color: rgba(0,0,0,0.15);">
+          ${UNIT_REFS.map(u=>`<option>${u.unitId}</option>`).join('')}
+        </select>
+      </div>
+      <div>
+        <label for="i-title" class="block text-xs font-medium mb-1 opacity-70">Título</label>
+        <input id="i-title" required class="w-full px-3 py-2 rounded-lg border text-sm" style="border-color: rgba(0,0,0,0.15);">
+      </div>
+      <div>
+        <label for="i-desc" class="block text-xs font-medium mb-1 opacity-70">Descrição</label>
+        <textarea id="i-desc" rows="3" required class="w-full px-3 py-2 rounded-lg border text-sm" style="border-color: rgba(0,0,0,0.15);"></textarea>
+      </div>
+      <div>
+        <label for="i-pri" class="block text-xs font-medium mb-1 opacity-70">Prioridade</label>
+        <select id="i-pri" class="w-full px-3 py-2 rounded-lg border text-sm" style="border-color: rgba(0,0,0,0.15);">
+          <option value="low">Baixa</option><option value="medium">Média</option><option value="high">Alta</option>
+        </select>
+      </div>
+      <button type="submit" id="saveI" class="w-full px-4 py-2 rounded-lg text-sm font-semibold text-white" style="background: var(--primary-color,#2d5f4f);">Registrar</button>
+    </form>`, ()=>{
+    $('issueForm').onsubmit = async (e)=>{
+      e.preventDefault();
+      const btn=$('saveI'); btn.disabled=true; btn.innerHTML='<span class="spinner w-4 h-4 inline-block"></span>';
+      if(allRecords.length>=999){ toast('Limite atingido','err'); return; }
+      const res = await window.dataSdk.create({
+        type:'issue', unitId:$('i-unit').value,
+        title:$('i-title').value.trim(),
+        description:$('i-desc').value.trim(),
+        priority:$('i-pri').value, status:'open',
+        createdAt: new Date().toISOString()
+      });
+      if(res.isOk){ toast('Ocorrência registrada!'); closeModal(); } else { toast('Erro','err'); btn.disabled=false; }
+    };
+  });
+});
+
+function renderAnnouncements(){
+  const list = byType('announcement').sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+  $('announcementsList').innerHTML = list.length ? list.map(a=>`
+    <div class="rounded-2xl p-4" style="background: var(--surface-color,#fff); border: 1px solid rgba(0,0,0,0.05);">
+      <div class="flex items-start justify-between gap-3">
+        <div class="flex-1">
+          <div class="font-display font-bold text-lg">${escapeHtml(a.title||'')}</div>
+          <div class="text-sm opacity-70 mt-1 whitespace-pre-wrap">${escapeHtml(a.description||'')}</div>
+          <div class="text-xs opacity-50 mt-2">${fmtDate(a.createdAt)}</div>
+        </div>
+        <button data-del-ann="${a.__backendId}" class="p-2 rounded-lg hover:bg-black/5"><i data-lucide="trash-2" style="width:16px;height:16px;color:#b91c1c;"></i></button>
+      </div>
+    </div>`).join('') : emptyState('megaphone','Nenhum comunicado','Crie comunicados para avisar todos os moradores');
+  $('announcementsList').querySelectorAll('[data-del-ann]').forEach(b=>{
+    b.onclick = async ()=>{
+      const rec = allRecords.find(r=>r.__backendId===b.dataset.delAnn);
+      if(!rec) return; b.disabled=true;
+      const res = await window.dataSdk.delete(rec);
+      if(res.isOk) toast('Excluído'); else toast('Erro','err');
+    };
+  });
+}
+
+$('newAnnouncementBtn').addEventListener('click', ()=>{
+  showModal('Novo Comunicado', `
+    <form id="annForm" class="space-y-3">
+      <div>
+        <label for="a-title" class="block text-xs font-medium mb-1 opacity-70">Título</label>
+        <input id="a-title" required class="w-full px-3 py-2 rounded-lg border text-sm" style="border-color: rgba(0,0,0,0.15);">
+      </div>
+      <div>
+        <label for="a-desc" class="block text-xs font-medium mb-1 opacity-70">Mensagem</label>
+        <textarea id="a-desc" rows="5" required class="w-full px-3 py-2 rounded-lg border text-sm" style="border-color: rgba(0,0,0,0.15);"></textarea>
+      </div>
+      <button type="submit" id="saveA" class="w-full px-4 py-2 rounded-lg text-sm font-semibold text-white" style="background: var(--primary-color,#2d5f4f);">Publicar</button>
+    </form>`, ()=>{
+    $('annForm').onsubmit = async (e)=>{
+      e.preventDefault();
+      const btn=$('saveA'); btn.disabled=true; btn.innerHTML='<span class="spinner w-4 h-4 inline-block"></span>';
+      if(allRecords.length>=999){ toast('Limite atingido','err'); return; }
+      const res = await window.dataSdk.create({
+        type:'announcement', title:$('a-title').value.trim(),
+        description:$('a-desc').value.trim(),
+        createdAt: new Date().toISOString()
+      });
+      if(res.isOk){ toast('Publicado!'); closeModal(); } else { toast('Erro','err'); btn.disabled=false; }
+    };
+  });
+});
+
+function emptyState(icon, title, desc){
+  return `<div class="text-center py-10 rounded-2xl" style="background: var(--surface-color,#fff); border: 1px dashed rgba(0,0,0,0.12);">
+    <i data-lucide="${icon}" style="width:40px;height:40px;opacity:0.3;" class="mx-auto mb-2"></i>
+    <div class="font-semibold">${title}</div>
+    <div class="text-sm opacity-60">${desc}</div>
+  </div>`;
+}
+
+function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+// ============== Element SDK ==============
+async function applyConfig(cfg){
+  const c = {...defaultConfig, ...cfg};
+  config = c;
+  document.documentElement.style.setProperty('--primary-color', c.primary_color);
+  document.documentElement.style.setProperty('--surface-color', c.surface_color);
+  document.documentElement.style.setProperty('--bg-color', c.bg_color);
+  document.documentElement.style.setProperty('--text-color', c.text_color);
+  document.documentElement.style.setProperty('--accent-color', c.accent_color);
+  $('condoName').textContent = c.condo_name;
+  $('condoAddress').textContent = c.condo_address;
+  renderAll();
+}
+
+if(window.elementSdk){
+  window.elementSdk.init({
+    defaultConfig,
+    onConfigChange: applyConfig,
+    mapToCapabilities: (c)=>({
+      recolorables: [
+        { get:()=>c.bg_color||defaultConfig.bg_color, set:(v)=>{ c.bg_color=v; window.elementSdk.setConfig({bg_color:v}); } },
+        { get:()=>c.surface_color||defaultConfig.surface_color, set:(v)=>{ c.surface_color=v; window.elementSdk.setConfig({surface_color:v}); } },
+        { get:()=>c.text_color||defaultConfig.text_color, set:(v)=>{ c.text_color=v; window.elementSdk.setConfig({text_color:v}); } },
+        { get:()=>c.primary_color||defaultConfig.primary_color, set:(v)=>{ c.primary_color=v; window.elementSdk.setConfig({primary_color:v}); } },
+        { get:()=>c.accent_color||defaultConfig.accent_color, set:(v)=>{ c.accent_color=v; window.elementSdk.setConfig({accent_color:v}); } }
+      ],
+      borderables: [],
+      fontEditable: undefined,
+      fontSizeable: undefined
+    }),
+    mapToEditPanelValues: (c)=> new Map([
+      ['condo_name', c.condo_name||defaultConfig.condo_name],
+      ['condo_address', c.condo_address||defaultConfig.condo_address],
+      ['monthly_fee_label', String(c.monthly_fee_label||defaultConfig.monthly_fee_label)]
+    ])
+  });
+}
+
+// ============== Data SDK ==============
+const dataHandler = {
+  onDataChanged(data){
+    allRecords = data || [];
+    renderAll();
+  }
+};
+
+(async ()=>{
+  applyConfig(defaultConfig);
+  if(window.dataSdk){
+    const r = await window.dataSdk.init(dataHandler);
+    if(!r.isOk) toast('Erro ao conectar','err');
+  }
+  lucide.createIcons();
+})();
+</script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9f27980ef42a649f',t:'MTc3NzIyNzU0OC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
